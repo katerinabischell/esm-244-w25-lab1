@@ -1,6 +1,9 @@
 ---
-title: "Template"
-format: html
+title: "Lab 01 Workup"
+format: 
+  html:
+    code-fold: true
+    toc: true
 execute:
   eval: false
 ---
@@ -20,7 +23,7 @@ library(tmap)
 What do we need to change to get the data to load in the following chunk?
 
 ```{r}
-sfo_trees_df<-read_csv(here("data","trees")) |> janitor::clean_names()
+sfo_trees_df<-read_csv(here("data","sfo_trees", "sfo_trees.csv")) |> janitor::clean_names() #the :: is a lazy load if we want to about doing library(janitor)
 ```
 
 ## Part 1: Data exploration
@@ -30,13 +33,41 @@ Look at `sfo_trees_df` dataframe. How many observations are there? What does the
 What are some interesting questions you could ask about the data?
 
 Write them below:
+Using dim(sfo_trees_df), I see that there are 197618 rows which are the observations and 12 columns which are the categories of the observations. 
+Q: What is the dbh column? What does it stand for?
+Q:Is there a correlation between legal status and species? 
+Q: How can we use the latitude and longitude data to pinpoint the general locations of the species and their legal status?
+Q: What is the significance of site order?
+Q: Are there more of some species than others?
+Q: How many unique species are there?
+Q: Which streets/zip codes have more tree density?
+Q: How many observation of legal status are we seeing?
 
+Q: How many counts of each observation by legal_status? Focus on the highest trees? unique(sfo_trees_df$legal_status) 
+```{r}
+sfo_trees_df |> 
+  group_by(legal_status) |> 
+  summarize(tree_count=n()) |> 
+  slice_max(tree_count, n=5) 
 
-
-
-
-
-
+```
+```{r}
+sfo_trees_df |> 
+  group_by(legal_status) |> 
+  summarize(tree_count = n()) |> 
+  slice_max(tree_count, n = 5) |> 
+  ggplot(aes(x = reorder(legal_status, -tree_count), y = tree_count)) +
+  geom_bar(stat = "identity", fill = "#2ca25f") +
+  labs(
+    title = "Top 5 Legal Status Categories by Tree Count",
+    x = "Legal Status",
+    y = "Tree Count") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 25, hjust = 1, family = "Arial", size = 8, face = "bold"),
+    plot.title = element_text(hjust = 0.5), 
+    panel.grid = element_blank())
+```
 
 
 ### Example 2
@@ -45,14 +76,25 @@ Describe what this piece of code does. Feel free to run it to help you understan
 
 ```{r}
 permitted_mta_dpw<-sfo_trees_df |> 
-  filter(legal_status == 'Permitted Site' & %in% c("MTA","DPW"))
+  filter(legal_status == 'Permitted Site' & caretaker %in% c("MTA","DPW"))
 ```
 
+ It filters rows where the legal_status column has the value 'Permitted Site'. 
+ It further filters rows where the caretaker column value is either "MTA" or "DPW". The %in% operator checks if a value belongs to a given set.
+ The & operator combines the two conditions, meaning both must be true for a row to be included in the output.
+ The resulting filtered dataset is assigned to the variable permitted_mta_dpw.
 
 What does the `%in%` do? Write an example to explain the `%in%` operator to your neighbor using the empty code chunk below
 
-```{r}
+The %in% calls for only the "MTA" and "DPW" values to be shown in the new permitted_mta_dpw dataframe from the caretaker column.
 
+```{r}
+sfo_trees_df |> 
+  filter(legal_status %in% c("Permitted Site", "Undocumented"))
+
+ex<-seq(1:10)
+
+ex %in% c(1,2,11)
 ```
 
 
@@ -62,18 +104,26 @@ Our boss tasked us with identifying oak and pine trees in SF based on legal stat
 
 Write pseudocode on how you would solve it
 
-
-
-
-
-
-
+1. Filter the dataframe for rows where species contains "oak" or "pine".
+2. Select the columns: legal status, latitude, longitude, planting date, and species.
+3. Create a new dataframe with the filtered data.
+4. Group the filtered data by legal status.
+5. Count the number of rows for each legal status group.
+6. Save the summarized data to a new dataframe.
+7. Plot the locations of oak and pine trees using latitude and longitude.
 
 Data wrangle done below:
 
 
 ```{r}
+oak_pine_df <- sfo_trees_df |> 
+  filter(str_detect(species, regex("oak|pine", ignore_case = TRUE))) |> 
+  select(legal_status, latitude, longitude, plant_date, species)
 
+
+oak_pine_count <- oak_pine_df |> 
+  group_by(legal_status) |> 
+  summarize(count = n(), .groups = "drop")
 ```
 
 
